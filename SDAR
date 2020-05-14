@@ -1,0 +1,172 @@
+/*
+  Blank Simple Project.c
+  http://learn.parallax.com/propeller-c-tutorials 
+*/
+#include "simpletools.h"                      // Include simple tools
+#include "ping.h"
+#include "abdrive360.h"
+#include "math.h"
+
+// search, decide, act, repeat 
+double objectLocation[10][10];
+int ULTRASONIC_PIN = 8;
+int main()                                    // Main function
+{
+ int doelafstandCM = 100;
+ findObjects(doelafstandCM);
+ pushObjects(doelafstandCM);
+ 
+}
+
+
+void findObjects(int maxDistance){
+  // turn in degrees of 
+  int singleTurn = 18;
+  int orientation = 0; //keep track how far we are
+  int indexofarray = 0; //dont want to write array methods :) #staylazy
+  
+  //loop untill we made a full circle 
+  while(orientation < 360)
+  {
+   double distance = MeasureDistanceCM();
+   
+   
+   //--------TO DO-------------------------------------------
+   
+   //alright so what needs to be added 
+   //next is a check for what happens when it goes past the max readible distance van de ping
+   
+   
+   //--------------------------------------------------------
+   
+   if(distance < maxDistance){ //must be a object
+     pushtoObject(indexofarray, 0, distance);
+     pushtoObject(indexofarray, 1, orientation);
+    
+     //add to list + orientation (the difference is what we need to push)
+    //have to push the object to the max distance
+    indexofarray++; //deze zou je kunnen gebruiken voor de amountofObjects :)
+     
+   }     
+   orientation += singleTurn;
+   turn(singleTurn); 
+  }    
+  
+
+}
+//what is the first object i push or how am i going to push
+
+void pushObjects(int maxDistance){
+  while(getAmountOfObjects() != 0){//jaja dit had indexofarray nooit kunnen doen WAT MOOI
+    pushObject(maxDistance);
+  }    
+}  
+  
+//duwt het object naar de afgesproken doelafstand(maxDistance).
+void pushObject(int maxDistance){
+  int indexClosestObject = getClosestObject();
+  gotoObject(indexClosestObject); //eerst naar object
+  pushObjectToDistance(indexClosestObject, maxDistance); // dan object duwen tot doelafstand
+  reset(indexClosestObject, maxDistance); // alles resetten en naar volgend object.
+} 
+//reset de bot naar de originele positie
+void reset(int index, int maxDistance){
+  drive(-maxDistance); //first we drive back
+  int degrees = objectLocation[index][1];
+  turn(-degrees); //rotate back to the original rotation
+  emptyobjectlocation(index); //empty this object because pushed.
+
+}  
+//gives back a index for the closest Object to the initial location.
+int getClosestObject(){
+  //10 is the length of the MDarray objectlocation
+  int closestObjectDistance = 1000; // hoog getal want de sonic kan niet verder kijken
+  int indexClosestObject = 0;
+  for(int i = 0; i < 10; i++)
+  {
+    if (objectLocation[i][0] != 0 //check op 0 omdat het standaard met 0 is gevuld 
+      && objectLocation[i][0] < closestObjectDistance){
+        closestObjectDistance = objectLocation[i][0];  //set to closest object check for next
+        indexClosestObject = i; //set index want deze hebben we eigenlijk echt nodig.
+      }          
+  }
+  return indexClosestObject;   
+}
+//returns the amount of objects. ZOU,  ook indexArrays globaal kunnen opslaan maar dit is ... :)
+int getAmountOfObjects(){
+  int objects = 0;
+  for(int i = 0; i < 10; i++)
+  {
+    if (objectLocation[i][0] != 0){ //check op 0 omdat het standaard met 0 is gevuld 
+        objects++;
+    }          
+  }
+  printf("nog  %i te gaan! \n", objects);
+ 
+  return objects;
+}  
+//methods for the array
+//een bepaalde array legen
+void emptyobjectlocation(int index){
+  objectLocation[index][0] = 0;
+  objectLocation[index][1] = 0;
+ 
+}
+//array volledig legen
+void clearobjectlocation(){
+    for(int i = 0; i < 10; i++){
+       objectLocation[i][0] = 0;
+       objectLocation[i][1] = 0;
+    }      
+}  
+//data inserten in de object location.
+void pushtoobjectlocation(int indexofarray, int index, double value ){
+  objectLocation[indexofarray][index] = value; 
+} 
+
+
+//methods for driving to the object and pushing
+
+//drives to the object
+void gotoObject(int index){
+  int distanceCM = objectLocation[index][0];
+  int orientation = objectLocation[index][1];
+  
+  turn(orientation);
+  drive(distanceCM);
+  
+}  
+//pushes the object to the desired end location (maxDistance);
+void pushObjectToDistance(int index, int maxDistance){
+  int pushdistanceCM = maxDistance - (int)objectLocation[index][0];
+  drive(pushdistanceCM);
+}
+
+
+  
+//methods for turning and riding
+int convertCmToTick (int cm){
+ return (cm * 10) / 3.25;
+ 
+}
+ 
+double convertDegreesToTicks(int degrees){
+  return ((664.76/ 360) * degrees) / 3.25;
+  
+}
+void drive(int cm){
+  int ticks = convertCmToTick(cm);
+  drive_goto(ticks,ticks);
+} 
+
+void turn(int degree){
+  double degreeticks = convertDegreesToTicks(degree) / 2;
+  drive_goto( ceil(degreeticks), (floor(degreeticks) * -1));  
+ }
+
+//methods for PINGSONIC
+double measureDistanceCM(){
+  double distance = ping_cm(ULTRASONIC_PIN);
+  pause(1001); //wachten op een response.
+  return distance;
+}
